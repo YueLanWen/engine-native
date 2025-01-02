@@ -556,4 +556,10 @@ namespace spine {
             _skeletonCache->setSlotsToSetupPose();
         }
     }
+    void SkeletonCacheAnimation::updateRegion(const std::string &slotName, cocos2d::middleware::Texture2D *texture)
+	{
+		if (_skeletonCache) {
+            _skeletonCache->updateRegion(slotName, texture);
+        }
+	}
 }
