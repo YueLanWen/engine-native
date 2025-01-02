@@ -64,7 +64,7 @@ extern "C"
     }
 #endif
 #endif
-
+#include "TEACipher.h"
 #if CC_USE_PNG
 #include "png/png.h"
 #endif //CC_USE_PNG
@@ -560,6 +560,10 @@ bool Image::initWithImageFile(const std::string& path)
 
     if (!data.isNull())
     {
+        if (TEACipher::getInstance().isEncryptedFile(data.getBytes(), data.getSize()))
+        {
+            TEACipher::getInstance().decryptFile(data.getBytes(), data.getSize(), data);
+        }
         ret = initWithImageData(data.getBytes(), data.getSize());
     }
 
