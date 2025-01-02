@@ -67,7 +67,8 @@ public:
         UPDATING,
         UNZIPPING,
         UP_TO_DATE,
-        FAIL_TO_UPDATE
+        FAIL_TO_UPDATE,
+        DECOMPRESS_FILE
     };
     
     const static std::string VERSION_ID;
@@ -230,6 +231,7 @@ protected:
     void startUpdate();
     void updateSucceed();
     bool decompress(const std::string &filename);
+    void decompressDownloadedZip();
     void decompressDownloadedZip(const std::string &customId, const std::string &storagePath);
     
     /** @brief Update a list of assets under the current AssetsManagerEx context
@@ -249,7 +251,7 @@ protected:
     void queueDowload();
     
     void fileError(const std::string& identifier, const std::string& errorStr, int errorCode = 0, int errorCodeInternal = 0);
-    
+    void fileDownLoaderSuccess(const std::string &customId, const std::string &storagePath);
     void fileSuccess(const std::string &customId, const std::string &storagePath);
     
     /** @brief  Call back function for error handling,
@@ -407,6 +409,9 @@ private:
     bool _canceled;
     //! Downloading task container
     std::unordered_map<std::string, std::shared_ptr<const network::DownloadTask>> _downloadingTask;
+
+    // decompress path container;
+    std::unordered_map<std::string, std::string> _decompressMap;
 };
 
 NS_CC_EXT_END
