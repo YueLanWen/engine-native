@@ -34,6 +34,7 @@
 #include "base/CCMap.h"
 #include "math/CCMath.h"
 #include "assembler/AssemblerBase.hpp"
+#include "assembler/MaskAssembler.hpp"
 #include "MemPool.hpp"
 #include <functional>
 
@@ -48,6 +49,7 @@ class Scene;
 struct TRS;
 struct ParentInfo;
 struct Skew;
+class MaskAssembler;
 
 /**
  * @addtogroup scene
@@ -77,6 +79,10 @@ public:
      *  @brief Visit the node as a ordinary node but not a root node.
      */
     static void visit(NodeProxy* node, ModelBatcher* batcher, Scene* scene);
+    static void renderNode(NodeProxy *node, ModelBatcher *batcher, Scene *scene);
+    static void traverseChildren(NodeProxy *node, ModelBatcher *batcher, Scene *scene);
+    static void childrenBfsRender(NodeProxy *node, ModelBatcher *batcher, Scene *scene);
+    static void cleanBfsChildren(NodeProxy *child);
     /*
      *  @brief Reset global render order.
      */
@@ -121,7 +127,8 @@ public:
      *  @brief Update parent by parent unitId and index.
      */
     void notifyUpdateParent();
-    
+    static void _markBfsRenderFalg(NodeProxy *node);
+    static  void markBfsRenderFlag(NodeProxy*node);
     /**
      *  @brief Sets the node proxy parent.
      *  @param[in] parent.
@@ -361,6 +368,19 @@ private:
     
     uint32_t _renderOrder = 0;
     static uint32_t _globalRenderOrder;
+
+public:
+    // bfs render order
+    //std::vector<std::string> _bfsIdxList;
+    std::vector<std::string> * _bfsIndexList = nullptr;
+    //std::unordered_map<std::string, std::vector<NodeProxy *>> _bfsMapList;
+    std::unordered_map<std::string, std::vector<NodeProxy *>> * _bfsMap = nullptr;
+    //std::vector<NodeProxy *> _bfsMkList;
+    std::vector<NodeProxy *> * _bfsMaskList = nullptr;
+    std::string _bfsNodeKey ="";
+    bool _bfsRenderFlag = false;
+    bool _recordCleanVectorFlag = false;
+    bool _recordOpacityOrActive = false;
 };
 
 // end of scene group
