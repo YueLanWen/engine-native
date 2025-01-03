@@ -241,7 +241,7 @@ protected:
     void setAssetDownloadState(const std::string &key, const DownloadState &state);
     
     void setManifestRoot(const std::string &root) {_manifestRoot = root;};
-	conststd::vector<std::string>&getDecompressList();    
+	const std::vector<std::string>&getDecompressList();    
 private:
     
     //! Indicate whether the version informations have been fully loaded
