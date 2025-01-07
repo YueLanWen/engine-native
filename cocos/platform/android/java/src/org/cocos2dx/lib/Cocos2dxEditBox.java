@@ -83,6 +83,7 @@ public class Cocos2dxEditBox {
         private float mLineWidth = 2f;
         private boolean keyboardVisible = false;
         private int mScreenHeight;
+        private int keyboardHeight = 0;
         private int mTopMargin = 0;
         private int mOrientation;
 
@@ -131,17 +132,27 @@ public class Cocos2dxEditBox {
                     getScrollX() + this.getWidth(),
                     this.getHeight() - padB / 2 - mLineWidth, mPaint);
             super.onDraw(canvas);
-        }
 
-        @Override
-        protected void onConfigurationChanged(Configuration newConfig) {
-            super.onConfigurationChanged(newConfig);
-            int newOrientation = newConfig.orientation;
-            if (mOrientation != newOrientation) {
-                mOrientation = newOrientation;
-                mTopMargin = 0;  // clear top margin cache
+            Rect r = new Rect();
+            getWindowVisibleDisplayFrame(r);
+            int newHeight = getRootView().getHeight() - (r.bottom - r.top);
+            if (this.keyboardHeight < newHeight) {
+                this.keyboardHeight = newHeight;
+                if (this.keyboardHeight > 0) {
+                    Cocos2dxEditText.this.setTopMargin(r.bottom);
+        		}
             }
         }
+
+//        @Override
+//        protected void onConfigurationChanged(Configuration newConfig) {
+//            super.onConfigurationChanged(newConfig);
+//            int newOrientation = newConfig.orientation;
+//            if (mOrientation != newOrientation) {
+//                mOrientation = newOrientation;
+//                mTopMargin = 0;  // clear top margin cache
+//            }
+//        }
 
         /***************************************************************************************
          Public functions.
@@ -149,6 +160,8 @@ public class Cocos2dxEditBox {
 
         public void show(String defaultValue, int maxLength, boolean isMultiline, boolean confirmHold, String confirmType, String inputType) {
             mIsMultiLine = isMultiline;
+            keyboardHeight = 0;
+
             this.setFilters(new InputFilter[]{new InputFilter.LengthFilter(maxLength) });
             this.setText(defaultValue);
             if (this.getText().length() >= defaultValue.length()) {
@@ -293,7 +306,7 @@ public class Cocos2dxEditBox {
      **************************************************************************************/
     private void addItems(Cocos2dxActivity context, FrameLayout layout) {
         RelativeLayout myLayout = new RelativeLayout(context);
-        myLayout.setFitsSystemWindows(true);
+//        myLayout.setFitsSystemWindows(true);
         this.addEditText(context, myLayout);
         this.addButton(context, myLayout);
 
