@@ -82,6 +82,7 @@ set(LIBS
     libnative_window.so
     libnative_buffer.so
     libbundle_ndk.z.so
+    libohsensor.so
     ${CC_EXTERNAL_LIBS}
 )
 

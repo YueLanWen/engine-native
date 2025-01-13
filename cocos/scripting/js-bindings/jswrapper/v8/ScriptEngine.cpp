@@ -140,7 +140,11 @@ namespace se {
             if ((argc - msgIndex) == 1)
             {
                 std::string msg = args[msgIndex].toStringForce();
+        #if (CC_TARGET_PLATFORM == CC_PLATFORM_OPENHARMONY)
                 SE_LOGD("JS: %{public}s%{public}s\n", prefix, msg.c_str());
+        #else
+                SE_LOGD("JS: %s%s\n", prefix, msg.c_str());
+        #endif
             }
             else if (argc > 1)
             {
@@ -158,8 +162,11 @@ namespace se {
                         msg += " " + args[i].toStringForce();
                     }
                 }
-
-               SE_LOGD("JS: %{public}s%{public}s\n", prefix, msg.c_str());
+                #if (CC_TARGET_PLATFORM == CC_PLATFORM_OPENHARMONY)
+                    SE_LOGD("JS: %{public}s%{public}s\n", prefix, msg.c_str());
+                #else
+                    SE_LOGD("JS: %s%s\n", prefix, msg.c_str());
+                #endif
             }
 
             return true;

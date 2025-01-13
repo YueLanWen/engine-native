@@ -206,7 +206,7 @@ bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret,
     JSVM_Script compiledScript;
     JSVM_ScriptOrigin scriptOrigin{
         .sourceMapUrl = nullptr,
-        .resourceName = fileName,
+        .resourceName = fileName ? fileName : "",
         .resourceLineOffset = 0,
         .resourceColumnOffset = 0
     };
