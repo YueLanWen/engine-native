@@ -35,10 +35,12 @@
 namespace cocos2d {
 using CallbackParamType = std::variant<std::string, double, bool>;
 
-struct AsyncCallParam {
+struct CallParam {
     std::function<void(CallbackParamType)> cb;
     std::string paramStr;
-    napi_value callFunc;
+    char *module_info;
+    const char *clsPath;
+    const char *method;
     napi_ref executeFuncRef;
 };
 
@@ -117,7 +119,7 @@ public:
         status = napi_call_function(env, global, func, sizeof...(Args), jsArgs, &return_val);
     }
     
-    void invokeAsync(AsyncCallParam *callParam) {
+    void invoke(CallParam *callParam, bool isSync) {
         callParam->executeFuncRef = funcRef;
         
         napi_status status;
@@ -136,8 +138,16 @@ public:
         }
         
         napi_threadsafe_function save_func;
-        status = napi_create_threadsafe_function(env, func, nullptr, workName, 0, 1, nullptr, 
-        [](napi_env env, void *raw, void *hint) {}, callParam, CallJS, &save_func);
+        if (isSync) {
+            status = napi_create_threadsafe_function(
+                env, func, nullptr, workName, 0, 1, nullptr, [](napi_env env, void *raw, void *hint) {}, callParam,
+                CallJsSync, &save_func);
+        } else {
+            status = napi_create_threadsafe_function(
+                env, func, nullptr, workName, 0, 1, nullptr, [](napi_env env, void *raw, void *hint) {}, callParam,
+                CallJsAsync, &save_func);
+        }
+
         if (status != napi_ok) {
             LOGW("invokeAsync napi_create_threadsafe_function fail,status=%{public}d", status);
             return;
@@ -156,8 +166,8 @@ public:
         }
     }
     
-    static void CallJS(napi_env env, napi_value js_cb, void *context, void *data) {
-        AsyncCallParam *callParam = (AsyncCallParam*) (context);
+    static void CallJsAsync(napi_env env, napi_value js_cb, void *context, void *data) {
+        CallParam *callParam = (CallParam*) (context);
         if (callParam == nullptr) {
             LOGW("CallJS AsyncCallParam callParam is null");
             return;
@@ -179,7 +189,7 @@ public:
             napi_value return_val;
             napi_get_undefined(env, &return_val);
             
-            AsyncCallParam *callbackParam = reinterpret_cast<AsyncCallParam *>(param_in);
+            CallParam *callbackParam = reinterpret_cast<CallParam *>(param_in);
             if (callbackParam == nullptr) {
                 LOGW("CallJS AsyncCallParam callbackParam is null");
                 return return_val;
@@ -204,6 +214,7 @@ public:
                 callbackValue = resultBol;
             } else {
                 callbackValue = "unknown";
+                LOGW("callbackValue returns incorrect value type");
             }
             callbackParam->cb(callbackValue);
             return return_val;
@@ -215,8 +226,22 @@ public:
             LOGW("CallJS napi_create_function fail,status=%{public}d", status);
             return;
         }
-        
-        napi_value jsArgs[3] = {callParam->callFunc, NapiValueConverter::ToNapiValue(env, callParam->paramStr), callbackFunc};
+
+        napi_value result;
+        status = napi_load_module_with_info(env, callParam->clsPath, callParam->module_info, &result);
+        if (status != napi_ok) {
+            LOGW("callNativeMethod napi_load_module_with_info fail, status=%{public}d", status);
+            return;
+        }
+
+        napi_value callFunc;
+        status = napi_get_named_property(env, result, callParam->method, &callFunc);
+        if (status != napi_ok) {
+            LOGW("callNativeMethod napi_get_named_property fail, status=%{public}d", status);
+            return;
+        }
+
+        napi_value jsArgs[3] = {callFunc, NapiValueConverter::ToNapiValue(env, callParam->paramStr), callbackFunc};
         napi_value return_val;
         napi_value global;
         status = napi_get_global(env, &global);
@@ -225,6 +250,72 @@ public:
         }
         
         status = napi_call_function(env, global, js_cb, 3, jsArgs, &return_val);
+        if (status != napi_ok) {
+            LOGW("CallJS napi_call_function fail,status=%{public}d", status);
+        }
+    }
+
+    static void CallJsSync(napi_env env, napi_value js_cb, void *context, void *data) {
+        CallParam *callParam = (CallParam *)(context);
+        if (callParam == nullptr) {
+            LOGW("CallJS AsyncCallParam callParam is null");
+            return;
+        }
+
+        napi_status status;
+        status = napi_get_reference_value(env, callParam->executeFuncRef, &js_cb);
+        if (status != napi_ok) {
+            LOGW("CallJS napi_get_reference_value fail,status=%{public}d", status);
+            return;
+        }
+
+        napi_value result;
+        status = napi_load_module_with_info(env, callParam->clsPath, callParam->module_info, &result);
+        if (status != napi_ok) {
+            LOGW("callNativeMethod napi_load_module_with_info fail, status=%{public}d", status);
+            return;
+        }
+
+        napi_value callFunc;
+        status = napi_get_named_property(env, result, callParam->method, &callFunc);
+        if (status != napi_ok) {
+            LOGW("callNativeMethod napi_get_named_property fail, status=%{public}d", status);
+            return;
+        }
+
+        napi_value jsArgs[2] = {callFunc, NapiValueConverter::ToNapiValue(env, callParam->paramStr)};
+        napi_value return_val;
+        napi_value global;
+        status = napi_get_global(env, &global);
+        if (status != napi_ok) {
+            LOGW("CallJS napi_get_global fail,status=%{public}d", status);
+        }
+
+        status = napi_call_function(env, global, js_cb, 2, jsArgs, &return_val);
+
+        napi_valuetype type;
+        napi_typeof(env, return_val, &type);
+
+        CallbackParamType callbackValue;
+
+        if (type == napi_string) {
+            std::string resultStr;
+            NapiValueConverter::ToCppValue(env, return_val, resultStr);
+            callbackValue = std::move(resultStr);
+        } else if (type == napi_number) {
+            double resultNum;
+            NapiValueConverter::ToCppValue(env, return_val, resultNum);
+            callbackValue = resultNum;
+        } else if (type == napi_boolean) {
+            bool resultBol;
+            NapiValueConverter::ToCppValue(env, return_val, resultBol);
+            callbackValue = resultBol;
+        } else {
+            callbackValue = "unknown";
+            LOGW("callbackValue returns incorrect value type");
+        }
+        callParam->cb(callbackValue);
+
         if (status != napi_ok) {
             LOGW("CallJS napi_call_function fail,status=%{public}d", status);
         }
