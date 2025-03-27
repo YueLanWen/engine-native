@@ -124,7 +124,9 @@ static void disableSensor(int index) {
     Sensor_SubscriptionId *it = g_id[index];
     Sensor_SubscriptionAttribute *at = g_attr[index];
     Sensor_Subscriber *gUser = g_user[index];
-
+    if(it == nullptr || at == nullptr || gUser == nullptr){
+        return;
+    }
     ret = OH_Sensor_Unsubscribe(it, gUser);
     if (ret != SENSOR_SUCCESS) {
         return;
@@ -158,7 +160,7 @@ void cocos2d::Device::setAccelerometerEnabled(bool isEnabled) {
 }
 
 void cocos2d::Device::setAccelerometerInterval(float interval) {
-    SENSOR_SAMPLE_PERIOD = static_cast<int64_t>(interval);
+    SENSOR_SAMPLE_PERIOD = static_cast<int64_t>(interval*1000000000);
     setAccelerometerEnabled(true);
 }
 
