@@ -131,32 +131,6 @@ float Device::getBatteryLevel() {
     return 0.F;
 }
 
-const Device::MotionValue& Device::getDeviceMotionValue() {
-    static MotionValue motionValue;
-    auto value = NapiHelper::napiCallFunction("getDeviceMotionValue");
-    if (!value.IsArray()) {
-         return motionValue;
-    }
-    
-    auto v = value.As<Napi::Array>();
-    if (v.Length() == 9) {
-        motionValue.accelerationIncludingGravityX = static_cast<Napi::Value>(v[(uint32_t)0]).As<Napi::Number>().FloatValue();
-        motionValue.accelerationIncludingGravityY = static_cast<Napi::Value>(v[(uint32_t)1]).As<Napi::Number>().FloatValue();
-        motionValue.accelerationIncludingGravityZ = static_cast<Napi::Value>(v[(uint32_t)2]).As<Napi::Number>().FloatValue();
-
-        motionValue.accelerationX = static_cast<Napi::Value>(v[(uint32_t)3]).As<Napi::Number>().FloatValue();
-        motionValue.accelerationY = static_cast<Napi::Value>(v[(uint32_t)4]).As<Napi::Number>().FloatValue();
-        motionValue.accelerationZ = static_cast<Napi::Value>(v[(uint32_t)5]).As<Napi::Number>().FloatValue();
-
-        motionValue.rotationRateAlpha = static_cast<Napi::Value>(v[(uint32_t)6]).As<Napi::Number>().FloatValue();
-        motionValue.rotationRateBeta = static_cast<Napi::Value>(v[(uint32_t)7]).As<Napi::Number>().FloatValue();
-        motionValue.rotationRateGamma = static_cast<Napi::Value>(v[(uint32_t)8]).As<Napi::Number>().FloatValue();
-    } else {
-        memset(&motionValue, 0, sizeof(motionValue));
-    }
-    return motionValue;
-}
-
 std::string Device::getDeviceModel() {
     std::string str;
     auto ret = NapiHelper::napiCallFunction("getDeviceModel");
@@ -164,18 +138,6 @@ std::string Device::getDeviceModel() {
         str = ret.As<Napi::String>().Utf8Value();
     }
     return str;
-}
-
-void Device::setAccelerometerEnabled(bool isEnabled) {
-    if (isEnabled) {
-       NapiHelper::napiCallFunction("senserOn");
-    } else {
-       NapiHelper::napiCallFunction("senserOff");
-    }
-}
-
-void Device::setAccelerometerInterval(float interval) {
-    NapiHelper::napiCallFunction("setAccelerometerInterval",interval);
 }
 
 void Device::vibrate(float duration) {

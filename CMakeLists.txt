@@ -67,6 +67,7 @@ list(APPEND CC_COCOS_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/FileUtils-openharmony.h
     ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/CCGL-openharmony.h
     ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/CCDevice-openharmony.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/CCDevice-openharmonySensor.cpp
     ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/OpenHarmonyPlatform.cpp
     ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/OpenHarmonyPlatform.h
     ${CMAKE_CURRENT_LIST_DIR}/cocos/platform/openharmony/render/egl_core.cpp

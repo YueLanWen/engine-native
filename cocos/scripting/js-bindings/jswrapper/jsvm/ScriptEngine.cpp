@@ -206,7 +206,7 @@ bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret,
     JSVM_Script compiledScript;
     JSVM_ScriptOrigin scriptOrigin{
         .sourceMapUrl = nullptr,
-        .resourceName = fileName,
+        .resourceName = fileName ? fileName : "",
         .resourceLineOffset = 0,
         .resourceColumnOffset = 0
     };
@@ -226,10 +226,11 @@ bool ScriptEngine::evalString(const char *scriptStr, ssize_t length, Value *ret,
        return false;
     }
 
-    if(!cachedData || cacheRejected) {
-        NODE_API_CALL(status, _env,
-                      OH_JSVM_CreateCodeCache(_env, compiledScript, (const uint8_t **)&cachedData, &cacheLength));
-    }
+    //TODO: CodeCache is not used now, doesn't need to create it.
+//    if(!cachedData || cacheRejected) {
+//        NODE_API_CALL(status, _env,
+//                      OH_JSVM_CreateCodeCache(_env, compiledScript, (const uint8_t **)&cachedData, &cacheLength));
+//    }
     
     if(ret) {
         internal::jsToSeValue(result, ret);
@@ -423,8 +424,7 @@ void ScriptEngine::setEnv(JSVM_Env env) { getInstance()->_env = env; }
 // }
 
 void ScriptEngine::setExceptionCallback(const ExceptionCallback &cb) {
-    //not impl
-    return;
+    _exceptionCallback = cb;
 }
 
 const std::chrono::steady_clock::time_point &ScriptEngine::getStartTime() const { return _startTime; }

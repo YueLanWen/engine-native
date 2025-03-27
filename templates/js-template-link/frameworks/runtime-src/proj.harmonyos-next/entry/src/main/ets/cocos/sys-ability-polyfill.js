@@ -26,7 +26,6 @@ import display from '@ohos.display';
 import I18n from '@ohos.i18n';
 import deviceInfo from '@ohos.deviceInfo';
 import batteryInfo from '@ohos.batteryInfo';
-import sensor from '@ohos.sensor';
 import connection from '@ohos.net.connection'
 import vibrator from '@ohos.vibrator';
 import { ContextType } from "../common/Constants"
@@ -85,69 +84,6 @@ globalThis.getDeviceOrientation = function () {
     var displayClass = display.getDefaultDisplaySync();
     return displayClass.rotation;
 }
-
-function radiansToDegrees(radians)  {
-    var pi = Math.PI;
-    return radians * (180/pi);
-}
-
-let sDeviceMotionValues = [];
-let interval = 200000000;
-
-globalThis.senserOff = function (){
-    sensor.off(sensor.SensorId.ACCELEROMETER);
-    sensor.off(sensor.SensorId.LINEAR_ACCELEROMETER);
-    sensor.off(sensor.SensorId.GYROSCOPE);
-}
-
-globalThis.senserOn = function (){
-    senserOff();
-    try {
-        sensor.on(sensor.SensorId.ACCELEROMETER, (data) => {
-            sDeviceMotionValues[0] = data.x;
-            sDeviceMotionValues[1] = data.y;
-            sDeviceMotionValues[2] = -data.z;
-        }, { interval: interval });
-    } catch (err) {
-        sDeviceMotionValues[0] = 0;
-        sDeviceMotionValues[1] = 0;
-        sDeviceMotionValues[2] = 0;
-    }
-    try {
-        sensor.on(sensor.SensorId.LINEAR_ACCELEROMETER, (data) => {
-            sDeviceMotionValues[3] = data.x;
-            sDeviceMotionValues[4] = data.y;
-            sDeviceMotionValues[5] = data.z;
-        }, { interval: interval });
-    } catch (err) {
-        sDeviceMotionValues[3] = 0;
-        sDeviceMotionValues[4] = 0;
-        sDeviceMotionValues[5] = 0;
-    }
-    try {
-        sensor.on(sensor.SensorId.GYROSCOPE, (data) => {
-            sDeviceMotionValues[6] = radiansToDegrees(data.x);
-            sDeviceMotionValues[7] = radiansToDegrees(data.y);
-            sDeviceMotionValues[8] = radiansToDegrees(data.z);
-        }, { interval: interval });
-    } catch (err) {
-        sDeviceMotionValues[6] = 0;
-        sDeviceMotionValues[7] = 0;
-        sDeviceMotionValues[8] = 0;
-    }
-}
-
-globalThis.setAccelerometerInterval = function (dt){
-    if(interval != dt){
-        interval = dt;
-        senserOn();
-    }
-}
-
-globalThis.getDeviceMotionValue = function () {
-    return sDeviceMotionValues;
-}
-
 
 globalThis.getNetworkType = function () {
     let netHandle = connection.getDefaultNetSync();

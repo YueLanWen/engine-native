@@ -121,6 +121,9 @@ public:
          */
     void setExceptionCallback(const ExceptionCallback &cb);
 
+    ExceptionCallback& getExceptionCallback() {
+        return _exceptionCallback;
+    }
     /**
          * @brief Grab a snapshot of the current JavaScript execution stack.
          * @return current stack trace string
@@ -302,6 +305,7 @@ private:
     JSVM_VM _vm         = nullptr;
     JSVM_VMScope _vmScope = nullptr;
     JSVM_EnvScope _envScope = nullptr;
+    ExceptionCallback _exceptionCallback;
 
     bool _isValid{false};
     bool _isGarbageCollecting{false};

@@ -270,12 +270,22 @@ static void registerFunction(const Napi::CallbackInfo &info) {
         return;        
     }
     Napi::Function jsFunction = info[1].As<Napi::Function>();
-    napi_ref fucRef;
-    napi_create_reference(env, jsFunction, 1, &fucRef);
-    char* name = new char[functionName.length() + 1];
-    strcpy(name, functionName.c_str());
-    JSFunction* jsFunctionPtr = new JSFunction(name, env, fucRef);
-    JSFunction::addFunction(name, jsFunctionPtr);
+    napi_status status;
+    napi_value workName;
+    status = napi_create_string_utf8(env, "Thread-safe call from async work", NAPI_AUTO_LENGTH, &workName);
+    if (status != napi_ok) {
+        LOGW("invokeAsync napi_create_string_utf8 fail,status=%{public}d", status);
+        return;
+    }
+        
+    napi_threadsafe_function save_func;
+
+    status = napi_create_threadsafe_function(
+                env, jsFunction, nullptr, workName, 0, 1, nullptr, [](napi_env env, void *raw, void *hint) {}, nullptr,
+               JSFunction::CallJS, &save_func);
+    
+    JSFunction JSFunction(env, save_func);
+    JSFunction::addFunction(functionName, JSFunction);
     return;
 }
 
@@ -367,9 +377,85 @@ Napi::Env NapiHelper::getWorkerEnv() {
     return gWorkerEnv;
 }
 
+static bool sevalue_to_napivalue(const se::Value &seVal, Napi::Value *napiVal, Napi::Env env);
+
+static bool seobject_to_napivalue(se::Object *seObj, Napi::Value *napiVal, Napi::Env env) {
+    auto napiObj = Napi::Object::New(env);
+    std::vector<std::string> allKeys;
+    bool ok = seObj->getAllKeys(&allKeys);
+    if (ok && !allKeys.empty()) {
+        for (const auto &key : allKeys) {
+            Napi::Value napiProp;
+            se::Value prop;
+            ok = seObj->getProperty(key.c_str(), &prop);
+            if (ok) {
+                ok = sevalue_to_napivalue(prop, &napiProp, env);
+                if (ok) {
+                    napiObj.Set(key.c_str(), napiProp);
+                }
+            }
+        }
+    }
+    *napiVal = napiObj;
+    return true;
+}
+
+static bool sevalue_to_napivalue(const se::Value &seVal, Napi::Value *napiVal, Napi::Env env) {
+    // Only supports number or {tag: number, url: string} now
+    if (seVal.isNumber()) {
+        *napiVal = Napi::Number::New(env, seVal.toDouble());
+    } else if (seVal.isString()) {
+        *napiVal = Napi::String::New(env, seVal.toString().c_str());
+    } else if (seVal.isBoolean()) {
+        *napiVal = Napi::Boolean::New(env, seVal.toBoolean());
+    } else if (seVal.isObject()) {
+        seobject_to_napivalue(seVal.toObject(), napiVal, env);
+    } else {
+        LOGW("sevalue_to_napivalue, Unsupported type: %d", static_cast<int32_t>(seVal.getType()));
+        return false;
+    }
+
+    return true;
+}
+
+Napi::Value evalString(const Napi::CallbackInfo &info){
+    Napi::Env env = info.Env();
+    size_t argc = info.Length();
+    if (argc != 1) {
+        Napi::Error::New(env, "Wrong argument count, 1 expected!").ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+
+    if (!info[0].IsString()) {
+        Napi::TypeError::New(env, "string expected!").ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+
+    std::string value = info[0].As<Napi::String>().ToString();
+    
+    if (!se::ScriptEngine::getInstance()->isValid()) {
+        CCLOG("ScriptEngine has not been initialized");
+        return env.Undefined();
+    }
+
+    se::AutoHandleScope hs;
+    
+    size_t length = value.length();
+    char* cValue = new char[length + 1];
+    strcpy(cValue, value.c_str());
+    se::Value ret;
+    se::ScriptEngine::getInstance()->evalString(cValue, length, &ret);
+    delete[] cValue;
+    Napi::Value result;
+    sevalue_to_napivalue(ret, &result, env);
+        
+    return result;
+}
+
 /* static */
 Napi::Object NapiHelper::init(Napi::Env env, Napi::Object exports) {
     exports["getContext"] = Napi::Function::New(env, getContext);
+    exports["evalString"] = Napi::Function::New(env, evalString);
     bool ret = exportFunctions(exports);
     if (!ret) {
         LOGE("NapiHelper init failed");
