@@ -41,9 +41,11 @@
 #define KEY_ASSETS              "assets"
 #define KEY_COMPRESSED_FILES    "compressedFiles"
 #define KEY_SEARCH_PATHS        "searchPaths"
+#define KEY_DECOMPRESS "decompress"
 
 #define KEY_PATH                "path"
 #define KEY_MD5                 "md5"
+#define KEY_FILE_VERSION_URL "fvu"
 #define KEY_GROUP               "group"
 #define KEY_COMPRESSED          "compressed"
 #define KEY_SIZE                "size"
@@ -324,13 +326,13 @@ std::unordered_map<std::string, Manifest::AssetDiff> Manifest::genDiff(const Man
     return diff_map;
 }
 
-void Manifest::genResumeAssetsList(DownloadUnits *units) const
+void Manifest::genResumeAssetsList(DownloadUnits *units, std::unordered_map<std::string, std::string> &_decompressMap, const std::string &storagePath) const
 {
     for (auto it = _assets.begin(); it != _assets.end(); ++it)
     {
         Asset asset = it->second;
         
-        if (asset.downloadState != DownloadState::SUCCESSED && asset.downloadState != DownloadState::UNMARKED)
+        if (asset.downloadState != DownloadState::SUCCESSED && asset.downloadState != DownloadState::DECOMPRESS && asset.downloadState != DownloadState::UNMARKED)
         {
             DownloadUnit unit;
             unit.customId = it->first;
@@ -338,6 +340,13 @@ void Manifest::genResumeAssetsList(DownloadUnits *units) const
             unit.storagePath = _manifestRoot + asset.path;
             unit.size = asset.size;
             units->emplace(unit.customId, unit);
+        }
+        else
+        {
+            if (asset.downloadState == DownloadState::DECOMPRESS)
+            {
+                _decompressMap[it->first] = storagePath + it->first;
+            }
         }
     }
 }
@@ -491,7 +500,16 @@ Manifest::Asset Manifest::parseAsset(const std::string &path, const rapidjson::V
     {
         asset.md5 = json[KEY_MD5].GetString();
     }
-    else asset.md5 = "";
+    else
+        asset.md5 = "";
+
+    if (json.HasMember(KEY_FILE_VERSION_URL) && json[KEY_FILE_VERSION_URL].IsString())
+    {
+        asset.fvu = json[KEY_FILE_VERSION_URL].GetString();
+        asset.fvu = asset.fvu.append("/");
+    }
+    else
+        asset.fvu = "";
     
     if ( json.HasMember(KEY_PATH) && json[KEY_PATH].IsString() )
     {
@@ -619,7 +637,29 @@ void Manifest::loadManifest(const rapidjson::Document &json)
         }
     }
     
+    // Retrieve decompress List
+
+    if (json.HasMember(KEY_DECOMPRESS))
+    {
+        const rapidjson::Value &paths = json[KEY_DECOMPRESS];
+        if (paths.IsArray())
+        {
+            for (rapidjson::SizeType i = 0; i < paths.Size(); ++i)
+            {
+                if (paths[i].IsString())
+                {
+                    _decompress.push_back(paths[i].GetString());
+                }
+            }
+        }
+    }
+
     _loaded = true;
+}
+
+const std::vector<std::string> &Manifest::getDecompressList()
+{
+    return _decompress;
 }
 
 void Manifest::saveToFile(const std::string &filepath)

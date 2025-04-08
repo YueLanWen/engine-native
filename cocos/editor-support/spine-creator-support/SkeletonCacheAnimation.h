@@ -93,7 +93,8 @@ namespace spine {
         void setToSetupPose ();
         void setBonesToSetupPose ();
         void setSlotsToSetupPose ();
-        void destroy();
+        void updateRegion(const std::string &slotName, cocos2d::middleware::Texture2D *texture);
+    	void destroy();
     private:
         float _timeScale = 1;
         bool _paused = false;

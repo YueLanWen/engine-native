@@ -46,7 +46,7 @@ NS_CC_EXT_BEGIN
 #define BUFFER_SIZE    8192
 #define MAX_FILENAME   512
 
-#define DEFAULT_CONNECTION_TIMEOUT 45
+#define DEFAULT_CONNECTION_TIMEOUT 1000000 // 45
 
 #define SAVE_POINT_INTERVAL 0.1
 
@@ -624,6 +624,54 @@ bool AssetsManagerEx::decompress(const std::string &zip)
     return true;
 }
 
+void AssetsManagerEx::decompressDownloadedZip()
+{
+    if (_decompressMap.size() != 0)
+    {
+        dispatchUpdateEvent(EventAssetsManagerEx::EventCode::DECOMPRESS_FILE);
+        auto decompressList = _remoteManifest->getDecompressList();
+        std::vector<std::string>::iterator it;
+        for (it = decompressList.begin(); it != decompressList.end(); it++)
+        {
+            auto zipData = _decompressMap.find(*it);
+            if (zipData != _decompressMap.end())
+            {
+                if (!decompress(zipData->second))
+                {
+                    std::string errorMsg = "Unable to decompress file " + zipData->second;
+                    // Ensure zip file deletion (if decompress failure cause task thread exit anormally)
+                    dispatchUpdateEvent(EventAssetsManagerEx::EventCode::ERROR_DECOMPRESS, "", errorMsg);
+                    // fileError(zipData->first, errorMsg);
+                    auto unitIt = _downloadUnits.find(zipData->first);
+                    // Found unit and add it to failed units
+                    if (unitIt != _downloadUnits.end())
+                    {
+                        DownloadUnit unit = unitIt->second;
+                        _failedUnits.emplace(unit.customId, unit);
+                    }
+                }
+                else
+                {
+                    _tempManifest->setAssetDownloadState(*it, Manifest::DownloadState::SUCCESSED);
+                    _tempManifest->saveToFile(_tempManifestPath);
+                }
+                _fileUtils->removeFile(zipData->second);
+            }
+        };
+    }else{
+        _updateState = State::UPDATING;
+    }
+
+    if (_failedUnits.size() > 0)
+    {
+        _updateState = State::FAIL_TO_UPDATE;
+        dispatchUpdateEvent(EventAssetsManagerEx::EventCode::UPDATE_FAILED);
+    }
+    else if (_updateState == State::UPDATING)
+    {
+        updateSucceed();
+    }
+}
 void AssetsManagerEx::decompressDownloadedZip(const std::string &customId, const std::string &storagePath)
 {
     struct AsyncData
@@ -678,6 +726,8 @@ void AssetsManagerEx::dispatchUpdateEvent(EventAssetsManagerEx::EventCode code, 
         case EventAssetsManagerEx::EventCode::ALREADY_UP_TO_DATE:
             _updateEntry = UpdateEntry::NONE;
             break;
+	    case EventAssetsManagerEx::EventCode::DECOMPRESS_FILE:
+	        break;
         case EventAssetsManagerEx::EventCode::UPDATE_PROGRESSION:
             break;
         case EventAssetsManagerEx::EventCode::ASSET_UPDATED:
@@ -835,7 +885,7 @@ void AssetsManagerEx::prepareUpdate()
     if (_tempManifest && _tempManifest->isLoaded() && _tempManifest->isUpdating() && _tempManifest->versionEquals(_remoteManifest))
     {
         _tempManifest->saveToFile(_tempManifestPath);
-        _tempManifest->genResumeAssetsList(&_downloadUnits);
+        _tempManifest->genResumeAssetsList(&_downloadUnits, _decompressMap, _tempStoragePath);
         _totalWaitToDownload = _totalToDownload = (int)_downloadUnits.size();
         _downloadResumed = true;
 
@@ -847,6 +897,11 @@ void AssetsManagerEx::prepareUpdate()
             {
                 _totalSize += unit.size;
             }
+        }
+        //当没有下载的文件，进行解压计算
+        if (_downloadUnits.size() <= 0)
+        {
+            return decompressDownloadedZip();
         }
     }
     else
@@ -886,6 +941,7 @@ void AssetsManagerEx::prepareUpdate()
                     std::string path = diff.asset.path;
                     DownloadUnit unit;
                     unit.customId = it->first;
+                    // unit.srcUrl = packageUrl + diff.asset.fvu + path + "?md5=" + diff.asset.md5;
                     unit.srcUrl = packageUrl + path + "?md5=" + diff.asset.md5;
                     unit.storagePath = _tempStoragePath + path;
                     unit.size = diff.asset.size;
@@ -1031,7 +1087,11 @@ void AssetsManagerEx::checkUpdate()
 
     switch (_updateState) {
         case State::FAIL_TO_UPDATE:
+    	{
             _updateState = State::UNCHECKED;
+        	downloadVersion();
+		}
+		    break;
         case State::UNCHECKED:
         case State::PREDOWNLOAD_VERSION:
         {
@@ -1079,7 +1139,9 @@ void AssetsManagerEx::update()
         case State::UNCHECKED:
         {
             _updateState = State::PREDOWNLOAD_VERSION;
+        	downloadVersion();
         }
+    		break;
         case State::PREDOWNLOAD_VERSION:
         {
             downloadVersion();
@@ -1181,6 +1243,35 @@ void AssetsManagerEx::fileError(const std::string& identifier, const std::string
     _tempManifest->setAssetDownloadState(identifier, Manifest::DownloadState::UNSTARTED);
 
     _currConcurrentTask = std::max(0, _currConcurrentTask-1);
+    queueDowload();
+}
+void AssetsManagerEx::fileDownLoaderSuccess(const std::string &customId, const std::string &storagePath)
+{
+    // Set download state to SUCCESSED
+    _tempManifest->setAssetDownloadState(customId, Manifest::DownloadState::DECOMPRESS);
+
+    auto unitIt = _failedUnits.find(customId);
+    // Found unit and delete it
+    if (unitIt != _failedUnits.end())
+    {
+        // Remove from failed units list
+        _failedUnits.erase(unitIt);
+    }
+
+    unitIt = _downloadUnits.find(customId);
+    if (unitIt != _downloadUnits.end())
+    {
+        // Reduce count only when unit found in _downloadUnits
+        _totalWaitToDownload--;
+
+        _percentByFile = 100 * (float)(_totalToDownload - _totalWaitToDownload) / _totalToDownload;
+        // Notify progression event
+        dispatchUpdateEvent(EventAssetsManagerEx::EventCode::UPDATE_PROGRESSION, "");
+    }
+    // Notify asset updated event
+    dispatchUpdateEvent(EventAssetsManagerEx::EventCode::ASSET_UPDATED, customId);
+
+    _currConcurrentTask = std::max(0, _currConcurrentTask - 1);
     queueDowload();
 }
 
@@ -1331,7 +1422,11 @@ void AssetsManagerEx::onSuccess(const std::string &/*srcUrl*/, const std::string
             bool compressed = assetIt != assets.end() ? assetIt->second.compressed : false;
             if (compressed)
             {
-                decompressDownloadedZip(customId, storagePath);
+                //已经下载的文件放入到map 中；
+                _decompressMap[customId] = storagePath;
+                fileDownLoaderSuccess(customId, storagePath);
+
+                // decompressDownloadedZip(customId, storagePath);
             }
             else
             {
@@ -1415,7 +1510,8 @@ void AssetsManagerEx::onDownloadUnitsFinished()
     }
     else if (_updateState == State::UPDATING)
     {
-        updateSucceed();
+        decompressDownloadedZip();
+        // updateSucceed();
     }
 }
 

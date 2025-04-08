@@ -48,9 +48,11 @@ struct DownloadUnit
     float       size;
 };
 
-struct ManifestAsset {
+struct ManifestAsset
+{
     std::string md5;
     std::string path;
+    std::string fvu;
     bool compressed;
     float size;
     int downloadState;
@@ -74,6 +76,7 @@ public:
     enum DownloadState {
         UNSTARTED,
         DOWNLOADING,
+        DECOMPRESS,
         SUCCESSED,
         UNMARKED
     };
@@ -196,7 +199,7 @@ protected:
     /** @brief Generate resuming download assets list
      * @param units   The download units reference to be modified by the generation result
      */
-    void genResumeAssetsList(DownloadUnits *units) const;
+    void genResumeAssetsList(DownloadUnits *units, std::unordered_map<std::string, std::string> &_decompressMap, const std::string &storagePath) const;
     
     /** @brief Prepend all search paths to the FileUtils.
      */
@@ -238,7 +241,7 @@ protected:
     void setAssetDownloadState(const std::string &key, const DownloadState &state);
     
     void setManifestRoot(const std::string &root) {_manifestRoot = root;};
-    
+	const std::vector<std::string>&getDecompressList();    
 private:
     
     //! Indicate whether the version informations have been fully loaded
@@ -282,6 +285,8 @@ private:
     
     //! All search paths
     std::vector<std::string> _searchPaths;
+    // array of decompressZip
+    std::vector<std::string> _decompress;
     
     rapidjson::Document _json;
 };

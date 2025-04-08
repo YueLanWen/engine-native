@@ -16,6 +16,7 @@ endif
 LOCAL_SRC_FILES := \
 cocos2d.cpp \
 platform/CCFileUtils.cpp \
+platform/TEACipher.cpp \
 platform/CCImage.cpp \
 platform/CCSAXParser.cpp \
 $(MATHNEONFILE) \

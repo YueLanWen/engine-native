@@ -2548,6 +2548,16 @@ bool
 },
 
 /**
+ * @method setActive
+ * @param {bool} arg0
+ */
+setActive : function (
+bool 
+)
+{
+},
+
+/**
  * @method getBones
  * @return {sp.Vector<sp.Bone >}
  */
@@ -2613,16 +2623,6 @@ getBendDirection : function (
 )
 {
     return 0;
-},
-
-/**
- * @method setActive
- * @param {bool} arg0
- */
-setActive : function (
-bool 
-)
-{
 },
 
 /**
@@ -3411,6 +3411,16 @@ getRotateMix : function (
 },
 
 /**
+ * @method setActive
+ * @param {bool} arg0
+ */
+setActive : function (
+bool 
+)
+{
+},
+
+/**
  * @method getBones
  * @return {sp.Vector<sp.Bone >}
  */
@@ -3486,16 +3496,6 @@ isActive : function (
 )
 {
     return false;
-},
-
-/**
- * @method setActive
- * @param {bool} arg0
- */
-setActive : function (
-bool 
-)
-{
 },
 
 /**
@@ -6496,6 +6496,16 @@ str
 },
 
 /**
+ * @method setVertexEffectDelegate
+ * @param {sp.VertexEffectDelegate} arg0
+ */
+setVertexEffectDelegate : function (
+vertexeffectdelegate 
+)
+{
+},
+
+/**
  * @method setBonesToSetupPose
  */
 setBonesToSetupPose : function (
@@ -6630,15 +6640,15 @@ getDebugData : function (
 },
 
 /**
- * @method findBone
+ * @method updateRegion
  * @param {String} arg0
- * @return {sp.Bone}
+ * @param {cc.middleware::Texture2D} arg1
  */
-findBone : function (
-str 
+updateRegion : function (
+str, 
+texture2d 
 )
 {
-    return sp.Bone;
 },
 
 /**
@@ -6802,13 +6812,15 @@ getSkeleton : function (
 },
 
 /**
- * @method setVertexEffectDelegate
- * @param {sp.VertexEffectDelegate} arg0
+ * @method findBone
+ * @param {String} arg0
+ * @return {sp.Bone}
  */
-setVertexEffectDelegate : function (
-vertexeffectdelegate 
+findBone : function (
+str 
 )
 {
+    return sp.Bone;
 },
 
 /**
@@ -7492,6 +7504,18 @@ str
 )
 {
     return sp.Attachment;
+},
+
+/**
+ * @method updateRegion
+ * @param {String} arg0
+ * @param {cc.middleware::Texture2D} arg1
+ */
+updateRegion : function (
+str, 
+texture2d 
+)
+{
 },
 
 /**

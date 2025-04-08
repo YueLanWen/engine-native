@@ -64,7 +64,7 @@ namespace spine {
         virtual uint32_t getRenderOrder() const override;
         
         Skeleton* getSkeleton() const;
-
+        void updateRegion(const std::string& slotName,cocos2d::middleware::Texture2D * texture);
         void setTimeScale (float scale);
         float getTimeScale () const;
 

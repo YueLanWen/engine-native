@@ -68,9 +68,11 @@ public:
         COLOR = 1 << 6,
         RENDER = 1 << 7,
         CHILDREN = 1 << 8,
-        POST_RENDER = 1 << 9,
-        FINAL = 1 << 10,
-        
+        //自定义bfs Render
+        CHILDREN_BFS_RENDER = 1 << 9,
+        POST_RENDER = 1 << 10,
+        FINAL = 1 << 11,
+
         PRE_CALCULATE_VERTICES = 1 << 28,
         // native render flag
         REORDER_CHILDREN = 1 << 29,

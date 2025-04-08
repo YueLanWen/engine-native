@@ -901,6 +901,49 @@ void SkeletonRenderer::render (float deltaTime) {
         _attachUtil->syncAttachedNode(_nodeProxy, _skeleton);
     }
 }
+void SkeletonRenderer::updateRegion(const std::string &slotName, cocos2d::middleware::Texture2D *texture)
+{
+
+    Slot *slot = _skeleton->findSlot(slotName.c_str());
+
+    Texture *texture2D = texture->getNativeTexture();
+    RegionAttachment *attachment = (RegionAttachment *)slot->getAttachment();
+
+    float width = texture2D->getWidth();
+    float height = texture2D->getHeight();
+
+    float wide = texture->getPixelsWide();
+    float high = texture->getPixelsHigh();
+    attachment->setUVs(0, 0, 1, 1, false);
+    attachment->setWidth(wide);
+    attachment->setHeight(high);
+    attachment->setRegionWidth(wide);
+    attachment->setRegionHeight(high);
+    attachment->setRegionOriginalWidth(wide);
+    attachment->setRegionOriginalHeight(high);
+    attachment->setRegionOffsetX(0);
+    attachment->setRegionOffsetY(0);
+    texture->setPixelsWide(width);
+    texture->setPixelsHigh(height);
+    texture->setRealTextureIndex(1);
+
+    AttachmentVertices *attachV = (AttachmentVertices *)attachment->getRendererObject();
+    if (attachV->_texture == texture)
+        return;
+
+    CC_SAFE_RELEASE(attachV->_texture);
+    attachV->_texture = texture;
+    CC_SAFE_RETAIN(texture);
+
+    V2F_T2F_C4B *vertices = attachV->_triangles->verts;
+    for (int i = 0, ii = 0; i < 4; ++i, ii += 2)
+    {
+        vertices[i].texCoord.u = attachment->getUVs()[ii];
+        vertices[i].texCoord.v = attachment->getUVs()[ii + 1];
+    }
+
+    attachment->updateOffset();
+}
 
 cocos2d::Rect SkeletonRenderer::getBoundingBox () const {
     static IOBuffer buffer(1024);
